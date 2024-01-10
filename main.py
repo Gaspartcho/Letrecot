@@ -1,5 +1,6 @@
 
 from copy import deepcopy
+from typing import List, Tuple
 from numpy import array
 from numpy._typing import NDArray
 import click
@@ -18,20 +19,24 @@ class Letrecot:
 			 [" ", " ", "X", " ", " "],
 			 [" ", "O", " ", "O", " "]]
 
-	neighbords_cells = {"ul": array((-1, -1)),
-						"u":  array((-1,  0)),
-						"ur": array((-1,  1)),
-						"l":  array(( 0, -1)),
-						"r":  array(( 0,  1)),
-						"dl": array(( 1, -1)),
-						"d":  array(( 1,  0)),
-						"dr": array(( 1,  1))}
+	neighbords_cells = [array((-1, -1)),
+						array((-1,  0)),
+						array((-1,  1)),
+						array(( 0, -1)),
+						array(( 0,  1)),
+						array(( 1, -1)),
+						array(( 1,  0)),
+						array(( 1,  1))]
 
 	selection = array([0, 0])
 
 
-	def __init__(self) -> None:
-		self.board = deepcopy(Letrecot.board)
+	def __init__(self, board:List[list] = []) -> None:
+
+		if len(board):
+			self.board = deepcopy(board)
+		else:
+			self.board = deepcopy(Letrecot.board)
 
 		return
 
@@ -93,21 +98,26 @@ class Letrecot:
 		return
 
 
+	def get_pawns(self) -> List[Tuple[str, NDArray]]:
+
+		result = []
+
+		for i in range(5):
+			for j in range(5):
+				pos = array((i, j))
+				cell = self.lookup_coo(pos)
+				if cell != " ":
+					result.append((cell, pos))
+
+		return result
+
+
 	def get_board_hashable(self) -> str:
 		"""Returns the board as a unique hashable value (string)"""
 
-		counter = 0
-		result = ""
+		temp = self.get_pawns()
 
-		for row in self.board:
-			for cell in row:
-				if cell == " ":
-					counter += 1
-				else:
-					result += " ".join((str(counter), cell, ""))
-					counter = 0
-
-		return result
+		return " ".join(["".join((pawn, str(pos))) for pawn, pos in temp])
 
 
 	def predict_move_piece(self, coo: NDArray, dire: NDArray) -> NDArray:
@@ -157,7 +167,7 @@ class Letrecot:
 				if self.lookup_coo(pos) != player:
 					continue
 
-				for dire in Letrecot.neighbords_cells.values():
+				for dire in self.neighbords_cells:
 					if self.lookup_coo(pos + dire) != player:
 						continue
 					if self.lookup_coo(pos + 2*dire) == player:
@@ -283,6 +293,54 @@ def play():
 	sys.stdout.write("Press any key to finish.\n")
 	click.pause()
 	sys.stdout.write("\n")
+
+#endregion
+
+
+#region computer play
+
+def get_possible_moves(game: Letrecot, player: str) -> List[Tuple[NDArray, NDArray]]:
+
+	pawns = game.get_pawns()
+	result = []
+	for pawn, pos in pawns:
+		if pawn != player:
+			continue
+		for dire in game.neighbords_cells:
+			predicted_move = game.predict_move_piece(pos, dire)
+			if (predicted_move != pos).any():
+				result.append((pos, dire))
+
+
+	return result
+
+
+def is_move_win(game: Letrecot, player: str, move:Tuple[NDArray, NDArray]) -> bool:
+	dummy = Letrecot(game.board)
+	dummy.move_piece(move[0], move[1])
+	result = dummy.check_win(player)
+	del dummy
+
+	return result
+
+
+def get_viable_mooves(game: Letrecot, player: str) -> List[Tuple[NDArray, NDArray]]:
+
+	result = []
+
+	if player == "X":
+		ennemy = "O"
+	else:
+		ennemy = "X"
+
+	moves = get_possible_moves(game, player)
+
+	for move in moves:
+		if is_move_win(game, player, move):
+			return [move]
+	
+
+
 
 #endregion
 

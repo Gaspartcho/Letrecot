@@ -12,4 +12,4 @@ This program uses the following libraries:
 Please make sure you have downloaded those libraries before running the program
 
 
-Licence is free btw... i think... (idk wtf does the GNU licences does...)
+License is free btw... i think... (idk wtf does the GNU license does...)
